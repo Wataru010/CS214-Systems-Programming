@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "cstddef": "c",
+        "*.tcc": "c",
+        "array": "c",
+        "variant": "c"
+    }
+}
