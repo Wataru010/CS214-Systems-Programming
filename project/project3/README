@@ -1,0 +1,225 @@
+# Project 3 Tic-Tac-Toe On-line
+# Author(s): Sihua Zhou (sz583), Yihang Sun (ys815)
+
+-------------------------------------------------------------------------------------------------------------------------------
+Goal:
+For this project, you and your partner will design and implement an on-line multiplayer Tic-Tac-
+Toe game service. You will write two programs ttt, which implements a simple game client, and
+ttts, the server used to coordinate games and enforce the rules.
+-------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------
+Included implements:
+1. Basic game of Tic-Tac-Toe
+2. Game with interuption "extra creadit feature"
+
+P.S. Though we didn't managed to finished the concurrent game, but we had the extra creadit feature implemented in the program.
+-------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------
+Initial Attempt with ideas:
+
+PLAY|6|Peter|
+    1. check if it is invalid
+    2. if the name is too long
+MOVE|6|X|2,2|
+    1. check if it is invalid
+    2. check if the spot has been chosen
+    MOVE|6|X|2,2|
+        1. check role
+        2. check format '|' after role
+        3. check postion valid or not, single char number separate by comma
+        4. check availability, if the postion is occupied or not
+        5. if all works then make move i.e. MOVD
+    MOVD|16|X|2,2|....X....|
+    INVL|24|That space is occupied.|
+RSGN|0|
+    1. send to both player with over and who resigned.
+    2. if it is invalid
+    OVER|26|W|Joe Smith has resigned.|
+DRAW|2|S|
+    1. send suggestion to the other player
+DRAW|2|A|
+    OVER|26|W|Joe Smith has resigned.|
+DRAW|2|R|
+    1. if draw succeed game stop and send over to both player with draw state
+    2. if draw failed game continues
+    3. if it is invalid
+
+
+how to achieve this protocol setting
+1. tokenization
+2. check valid or not
+3. act accordingly and send back result
+
+maybe a struct
+    char protocol[5]
+    int append_str_len
+    char str[BUFSIZE]
+-------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------
+Test Plans: 
+
+Briefing: By testing different set of input and see it gives the expected result.
+
+Exmaples:
+    1. For entry the game   
+        User have to input the correct format to enter the game, other command would not pass either.
+        Outputs->
+            PLAY5|PETER|
+            INVL|57|Please enter name informat of PLAY|5|NAME| to start game|
+            
+            MOVE|6|X|2,2|
+            INVL|57|Please enter name informat of PLAY|5|NAME| to start game|
+        
+        The game wouldn't start until the user has input the name with the correct format.
+        Outputs->
+            MOVE|6|X|2,2|
+            INVL|57|Please enter name informat of PLAY|5|NAME| to start game|
+            PLAY5|PETER|
+            INVL|57|Please enter name informat of PLAY|5|NAME| to start game|
+            NAME|10|Joe Smith|
+            INVL|57|Please enter name informat of PLAY|5|NAME| to start game|
+            PLAY|10|Joe Smith|
+            WAIT|0|
+            BEGN|O|PETER|
+
+    2. During the game  
+        Users are need required to enter the correct format in order to continuing the game
+        
+        Command List with its example and testing:
+
+        MOVE
+            User use this command to make move in the game.
+            Only correct move format would be taken to account.
+            In addtion, making moves during opponents turn would result in no response from the server.
+            
+            Outputs->
+            -Correct move wtih response:
+            Player1:
+                MOVE|6|X|2,2|
+                MOVD|16|X|2,2|....X....|
+            Player2: 
+                MOVD|16|X|2,2|....X....|
+            
+            -Trying to make move during opponent's turn:
+            Player1:
+                MOVE|6|X|2,1|           
+
+            Player2:
+
+            
+            -Wrong format or input would result in INVL message returned to the client for client to know.
+            Outputs->
+            MOVE|X2,2|
+            INVL|56|Invalid input message too long or length doesn't match!|
+
+            -Cannot take space that is occupied.
+            Outputs->
+            MOVD|16|X|2,2|....X....|
+            MOVE|6|O|2,2|
+            INVL|24|That space is occupied.|
+
+        RSGN
+            Both player can resigned at anytime they want to regardless of whose turn is it.
+            After one of the player resigned, a OVER message would be send to both players.
+
+            Outputs->
+            RSGN|0|
+            OVER|26|L|Joe Smith has resigned.|
+
+        DRAW
+            Similar a player can suggest a draw during the game regardless of whose turn is it.
+            The a draw suggest is agreed by both player would resulting end of the game. 
+            Otherwise, it continues and resume with original current turn between users.
+            However, once a draw suggest message is out, the other player need to make decision before 
+            moving on.
+
+            Outputs->
+            Rejected:
+            DRAW|2|S|
+            DRAW|2|R|
+
+            Need to make decison before move on:
+            DRAW|2|S|
+            fasf
+            INVL|47|You have to decide to draw or reject the draw!|
+
+            Agreed on draw:
+            DRAW|2|S|
+            DRAW|2|A|
+            OVER|30|D|Both player agreed on draw.|
+
+    3. End of the game
+
+        One of them won the game:
+
+            MOVE|6|X|2,2|
+            Player1 
+            MOVE|6|X|2,2|
+            MOVD|16|X|2,2|....X....|
+            MOVD|16|O|2,1|...OX....|
+            MOVE|6|X|1,2|
+            MOVD|16|X|1,2|.X.OX....|
+            MOVD|16|O|3,3|.X.OX...O|
+            MOVE|6|X|3,2|
+            MOVD|16|X|3,2|.X.OX..XO|
+            OVER|13|W|PETER won!|
+
+            Player2
+            MOVD|16|X|2,2|....X....|
+            MOVE|6|O|2,1|
+            MOVD|16|O|2,1|...OX....|
+            MOVD|16|X|1,2|.X.OX....|
+            MOVE|6|O|3,3|
+            MOVD|16|O|3,3|.X.OX...O|
+            MOVD|16|X|3,2|.X.OX..XO|
+            OVER|13|L|PETER won!|
+
+        Board is full:
+            Test with the following order:
+            X:              O:
+                2,1             1,1
+                3,1             1,3
+                1,2             3,2
+                2,2             2,3
+                3,3
+
+            Player1:
+            MOVE|6|X|2,1|
+            MOVD|16|X|2,1|...X.....|
+            MOVD|16|O|1,1|O..X.....|
+            MOVE|6|X|3,1|
+            MOVD|16|X|3,1|O..X..X..|
+            MOVD|16|O|1,3|O.OX..X..|
+            MOVE|6|X|1,2|
+            MOVD|16|X|1,2|OXOX..X..|
+            MOVD|16|O|3,2|OXOX..XO.|
+            MOVE|6|X|2,2|
+            MOVD|16|X|2,2|OXOXX.XO.|
+            MOVD|16|O|2,3|OXOXXOXO.|
+            MOVE|6|X|3,3|
+            MOVD|16|X|3,3|OXOXXOXOX|
+            OVER|13|D|Game draw!|
+
+            Player2:
+            MOVD|16|X|2,1|...X.....|
+            MOVE|6|O|1,1|          
+            MOVD|16|O|1,1|O..X.....|
+            MOVD|16|X|3,1|O..X..X..|
+            MOVE|6|O|1,3|
+            MOVD|16|O|1,3|O.OX..X..|
+            MOVD|16|X|1,2|OXOX..X..|
+            MOVE|6|O|3,2|
+            MOVD|16|O|3,2|OXOX..XO.|
+            MOVD|16|X|2,2|OXOXX.XO.|
+            MOVE|6|O|2,3|
+            MOVD|16|O|2,3|OXOXXOXO.|
+            MOVD|16|X|3,3|OXOXXOXOX|
+            OVER|13|D|Game draw!|
+
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+

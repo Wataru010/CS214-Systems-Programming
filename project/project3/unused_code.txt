@@ -1,0 +1,425 @@
+int main(int argc, char *argv[]){
+    
+    if(argc > 1){
+        struct sockaddr_storage host_addr;
+        socklen_t host_addr_len;
+
+        char *port_number = argv[1];
+
+        int socket_conn = listener(port_number, 1);
+
+        if(socket_conn < 0){
+            printf("Fail to connect!");
+            exit(EXIT_FAILURE);
+        }
+
+        int count_socket = 0;
+
+        int sockets[2];
+
+        int socket_temp;
+
+        write(STDOUT_FILENO, "Waiting for players ... \n", 26);
+
+        while (count_socket != 2)
+        {
+            host_addr_len = sizeof(host_addr);
+            socket_temp = accept(socket_conn, (struct sockaddr *)&host_addr, &host_addr_len);
+
+            if(socket_temp < 0){
+                perror("accept");
+                continue;
+            }
+            
+            char buf[BUFSIZE];
+            int input_count = read(socket_temp, buf, BUFSIZE);
+            if(input_count > 0){
+                write(STDOUT_FILENO, buf, input_count);
+                write(socket_temp, "WAIT|0|\n", 9);
+                memset(buf, 0, BUFSIZE);
+                sockets[count_socket] = socket_temp; 
+                count_socket++;
+            }else{
+                continue;
+            }
+
+            
+        }
+
+        int player1_socket, player2_socket;
+        char role[2];
+        long int random = rand();
+        if(random >= (RAND_MAX/2)){
+            player1_socket = sockets[0];
+            player2_socket = sockets[1];
+            char buf[BUFSIZE] = "BEGN|X|";
+            char *pl = "Player 1\n";
+            strcpy(buf+7, pl);
+            write(player1_socket, buf, 7+strlen(pl));
+            // write(player1_socket, "BEGN|X|", 8);
+            // write(player1_socket, "PLAYER 1|\n", 11);
+            write(player2_socket, "BEGN|O|PLAYER 2\n", 17);
+            role[0] = 'X';
+            role[1] = 'O';
+        }else{
+            player1_socket = sockets[1];
+            player2_socket = sockets[0];
+            char buf[BUFSIZE] = "BEGN|X|";
+            char *pl = "Player 1\n";
+            strcpy(buf+7, pl);
+            write(player1_socket, buf, 7+strlen(pl));
+            // write(player1_socket, "BEGN|X|", 8);
+            // write(player1_socket, "PLAYER 1|\n", 11);
+            write(player2_socket, "BEGN|O|PLAYER 2\n", 17);
+            role[0] = 'O';
+            role[1] = 'X';
+        }
+
+        char buf1[BUFSIZE];
+        char buf2[BUFSIZE];
+
+        int word_count1;
+        int word_count2;
+
+        // int DRAW_STATE = 0;
+
+        // char *board = ".........|";
+        char *board = malloc(sizeof(char)*11);
+        memset(board, '.', 9);
+        board[9] = '|';
+        board[10] = '\0';
+
+        while (1)
+        {
+            word_count1 = read(player1_socket, buf1, BUFSIZE);
+            // word_count2 = read(player2_socket, buf2, BUFSIZE);
+            msg *player1_message, *player2_message;
+            if(word_count1 > 0){
+                buf1[word_count1-1] = '\0';
+                player1_message = tokenization(buf1);
+                char p1_msg_buf[BUFSIZE*2];
+                sprintf(p1_msg_buf, "%s|%d|%s", player1_message->protocol, player1_message->append_str_len, player1_message->str);
+                // write(player2_socket, p1_msg_buf, strlen(p1_msg_buf));
+                write(STDOUT_FILENO, p1_msg_buf, strlen(p1_msg_buf));
+                write(STDOUT_FILENO, "\n", 1);
+                memset(p1_msg_buf, 0, BUFSIZE*2);
+
+                // printf("%s\n",player1_message->protocol);
+                int succeed = 0;
+                while(succeed == 0){
+                    if(strcmp(player1_message->protocol, "MOVE") == 0){
+                        while(1){
+                            move(player1_message, role[0], board);
+                        
+                            sprintf(p1_msg_buf, "%s|%d|%s", player1_message->protocol, player1_message->append_str_len, player1_message->str);
+                            write(STDOUT_FILENO, "TO PLAYER 1 -> ", 16);
+                            write(STDOUT_FILENO, p1_msg_buf, strlen(p1_msg_buf));
+                            write(STDOUT_FILENO, "\n", 1);
+                            write(player1_socket, p1_msg_buf, strlen(p1_msg_buf));
+
+                            if(strcmp(player1_message->protocol, "MOVD") == 0){
+                                break;
+                            }
+                            
+                            memset(buf1, 0, BUFSIZE);
+                            word_count1 = read(player1_socket, buf1, BUFSIZE);
+                            buf1[word_count1-1] = '\0';
+                            free(player1_message);
+                            player1_message = tokenization(buf1); 
+                        }
+
+                        write(player2_socket, p1_msg_buf, strlen(p1_msg_buf));
+                        memset(p1_msg_buf, 0, BUFSIZE*2);
+                        succeed = 1;
+                    }else if(strcmp(player1_message->protocol, "RSGN") == 0){
+
+                    }else if(strcmp(player1_message->protocol, "DRAW") == 0){
+
+                    }else{
+                        if(strcmp(player1_message->protocol, "PLAY") == 0){
+
+                        }else if(strcmp(player1_message->protocol, "INVL") == 0){
+                            while(strcmp(player1_message->protocol, "INVL") == 0){
+                                sprintf(p1_msg_buf, "%s|%d|%s", player1_message->protocol, player1_message->append_str_len, player1_message->str);
+                                
+                                write(STDOUT_FILENO, "TO PLAYER 1 -> ", 16);
+                                write(STDOUT_FILENO, p1_msg_buf, strlen(p1_msg_buf));
+                                write(STDOUT_FILENO, "\n", 1);
+                                write(player1_socket, p1_msg_buf, strlen(p1_msg_buf));
+
+                                
+                                memset(buf1, 0, BUFSIZE);
+                                word_count1 = read(player1_socket, buf1, BUFSIZE);
+                                buf1[word_count1-1] = '\0';
+                                // free(player1_message);
+                                player1_message = tokenization(buf1); 
+                            }
+                        }
+                    }
+                }
+                
+                memset(buf1, 0, BUFSIZE);
+            }
+
+            word_count2 = read(player2_socket, buf2, BUFSIZE);
+            
+            if(word_count2 > 0){
+                buf2[word_count2-1] = '\0';
+                player2_message = tokenization(buf2);
+                char p2_msg_buf[BUFSIZE*2];
+                sprintf(p2_msg_buf, "%s|%d|%s", player2_message->protocol, player2_message->append_str_len, player2_message->str);
+                // write(player1_socket, p2_msg_buf, strlen(p2_msg_buf));
+                write(STDOUT_FILENO, p2_msg_buf, strlen(p2_msg_buf));
+                write(STDOUT_FILENO, "\n", 1);
+                memset(p2_msg_buf, 0, BUFSIZE*2);
+
+                if(strcmp(player2_message->protocol, "MOVE") == 0){
+                    while(1){
+                        move(player2_message, role[1], board);
+                       
+                        sprintf(p2_msg_buf, "%s|%d|%s", player2_message->protocol, player2_message->append_str_len, player2_message->str);
+                        write(STDOUT_FILENO, "TO PLAYER 2 -> ", 16);
+                        write(STDOUT_FILENO, p2_msg_buf, strlen(p2_msg_buf));
+                        write(STDOUT_FILENO, "\n", 1);
+                        write(player2_socket, p2_msg_buf, strlen(p2_msg_buf));
+
+                        if(strcmp(player2_message->protocol, "MOVD") == 0){
+                            break;
+                        }
+                        
+                        memset(buf2, 0, BUFSIZE);
+                        word_count2 = read(player2_socket, buf2, BUFSIZE);
+                        buf2[word_count2-1] = '\0';
+                        free(player2_message);
+                        player2_message = tokenization(buf2); 
+                    }
+
+                    write(player1_socket, p2_msg_buf, strlen(p2_msg_buf));
+                    memset(p2_msg_buf, 0, BUFSIZE*2);
+
+                }else if(strcmp(player1_message->protocol, "RSGN") == 0){
+
+                }else if(strcmp(player1_message->protocol, "DRAW") == 0){
+
+                }else{
+                    if(strcmp(player1_message->protocol, "PLAY") == 0){
+
+                    }else if(strcmp(player1_message->protocol, "INVL") == 0){
+                        while(strcmp(player2_message->protocol, "INVL") == 0){
+                            sprintf(p2_msg_buf, "%s|%d|%s", player2_message->protocol, player2_message->append_str_len, player2_message->str);
+                            
+                            
+                            write(STDOUT_FILENO, "TO PLAYER 2 -> ", 16);
+                            write(STDOUT_FILENO, p2_msg_buf, strlen(p2_msg_buf));
+                            write(STDOUT_FILENO, "\n", 1);
+                            write(player2_socket, p2_msg_buf, strlen(p2_msg_buf));
+
+                            
+                            memset(buf2, 0, BUFSIZE);
+                            word_count2 = read(player2_socket, buf2, BUFSIZE);
+                            buf2[word_count2-1] = '\0';
+                            free(player2_message);
+                            player2_message = tokenization(buf2); 
+                            
+                        }
+                    }
+                }
+
+                memset(buf2, 0, BUFSIZE);
+            }
+            
+            free(player1_message);
+            free(player2_message);
+            if(word_count2 == 2 || word_count1 == 2){
+                break;
+            }
+            
+        }
+        close(player1_socket);
+        close(player2_socket);
+        close(socket_conn);
+        free(board);
+    }else{
+        printf("Please restart the server and provide a port number!\n");
+    }
+    
+    printf("Exiting ... \n");
+    
+    
+    return EXIT_SUCCESS;
+}
+
+
+client testing 1
+{
+	int w_count;
+    char buf[BUFSIZE];
+    while((w_count =  read(STDIN_FILENO, buf, BUFSIZE)) > 0){
+        write(player1_socket, buf, w_count);
+        write(player2_socket,buf, w_count);
+        memset(buf, 0, BUFSIZE);
+        if(w_count == 2){
+            break;
+        }
+    }
+}
+
+client testing 2
+{
+    char buf1[BUFSIZE];
+    char buf2[BUFSIZE];
+    int word_count1;
+    int word_count2;
+    int count = 0;
+    while(count < 3){
+        word_count1 = read(player1_socket, buf1, BUFSIZE);
+        if(word_count1 > 0){
+            write(STDOUT_FILENO, buf1, word_count1);
+            memset(buf1, 0, BUFSIZE);
+        }
+
+        word_count2 = read(player2_socket, buf2, BUFSIZE);
+        if(word_count2 > 0){
+            write(STDOUT_FILENO, buf2, word_count2);
+            memset(buf2, 0, BUFSIZE);
+        }
+        count++;
+    }
+}
+
+client testing 3
+{
+    char buf1[BUFSIZE];
+    char buf2[BUFSIZE];
+    int word_count1;
+    int word_count2;
+    int count = 0;
+    while(count < 3){
+        word_count1 = read(player1_socket, buf1, BUFSIZE);
+        if(word_count1 > 0){
+            write(STDOUT_FILENO, buf1, word_count1);
+            write(player2_socket, buf1, word_count1);
+            memset(buf1, 0, BUFSIZE);
+        }
+
+        word_count2 = read(player2_socket, buf2, BUFSIZE);
+        if(word_count2 > 0){
+            write(STDOUT_FILENO, buf2, word_count2);
+            write(player1_socket, buf2, word_count2);
+            memset(buf2, 0, BUFSIZE);
+        }
+        count++;
+    }
+}
+
+
+name checking
+{
+    if(same_username_check == 0){
+        sockets[count_socket] = socket_temp; 
+        count_socket++;
+    }else{
+        free(user_name[count_socket]);
+
+        while(strcmp(player->protocol, "PLAY") != 0 && same_username_check == 1){
+            char str_buf[BUFSIZE*2];
+            sprintf(str_buf, "%s|%d|%s", player->protocol, player->append_str_len, player->str);
+            write(STDOUT_FILENO, str_buf, strlen(str_buf));
+            write(STDOUT_FILENO, "\n", 2);
+            write(socket_temp, str_buf, strlen(str_buf));
+            memset(buf, 0, BUFSIZE);
+            input_count = read(socket_temp, buf, BUFSIZE);
+            if(input_count > 0){
+                free(player);
+                buf[input_count-1] = '\0';
+                player = tokenization(buf);
+            }
+            
+            memset(buf, 0, BUFSIZE);
+            // user_name[count_socket] = player->str;
+            user_name[count_socket] = malloc(sizeof(char) * player->append_str_len+1);
+            strcpy(user_name[count_socket], player->str);
+
+            int same_username_check = 0;
+            for(int index = 0; index < count_socket; index++){
+                if(strcmp(user_name[index], user_name[count_socket]) == 0){
+                    same_username_check = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+thread server
+{
+		pthread_t p1_thread, p2_thread;
+        pthread_create(&p1_thread, NULL, p1_read_write, sockets);
+        pthread_create(&p2_thread, NULL, p2_read_write, sockets);
+        
+        pthread_join(p1_thread, NULL);
+        pthread_join(p2_thread, NULL);
+}
+
+
+setup worker code:
+{
+    // char buf[BUFSIZE];
+    // int input_count;
+    // msg *player;
+    // int same_username_check = 0;
+    // while((input_count = read(socket_temp, buf, BUFSIZE)) > 0){
+    //     write(STDOUT_FILENO, buf, input_count);
+    //     buf[input_count-1] = '\0';
+    //     player = tokenization(buf);
+    //     memset(buf, 0, BUFSIZE);
+
+    //     if(strcmp(player->protocol, "PLAY") != 0){
+    //         char str_buf1[BUFSIZE*2];
+    //         sprintf(str_buf1, "%s|%d|%s\n", player->protocol, player->append_str_len, player->str);
+    //         write(STDOUT_FILENO, str_buf1, strlen(str_buf1)); write(STDOUT_FILENO, "\n", 2);
+    //         write(socket_temp, str_buf1, strlen(str_buf1));
+    //     }
+        
+    //     memset(buf, 0, BUFSIZE);
+    //     if(strcmp(player->protocol, "PLAY") == 0){
+    //         user_name[count_socket] = malloc(sizeof(char) * player->append_str_len+1);
+    //         strcpy(user_name[count_socket], player->str);
+    //         same_username_check = 0;
+    //         for(int index = 0; index < count_socket; index++){
+    //             if(strcmp(user_name[index], user_name[count_socket]) == 0){
+    //                 same_username_check = 1;
+    //                 strcpy(player->protocol, "INVL");
+    //                 memset(player->str, 0, BUFSIZE);
+    //                 strcpy(player->str, "name already in use!|");
+    //                 player->append_str_len = strlen(player->str);
+
+    //                 char str_buf2[BUFSIZE*2];
+    //                 sprintf(str_buf2, "%s|%d|%s\n", player->protocol, player->append_str_len, player->str);
+    //                 write(STDOUT_FILENO, str_buf2, strlen(str_buf2)); write(STDOUT_FILENO, "\n", 2);
+    //                 write(socket_temp, str_buf2, strlen(str_buf2));
+    //                 free(user_name[count_socket]);
+    //                 break;
+    //             }
+    //         }
+    //     }
+
+    //     if(strcmp(player->protocol, "PLAY") == 0 && same_username_check == 0){
+    //         free(player);
+    //         break;
+    //     }
+    //     free(player);
+    // }
+    
+    // same_username_check = 0;
+    // write(socket_temp, "WAIT|0|\n", 9);
+    // sockets[count_socket] = socket_temp; 
+    // count_socket++;
+    
+    
+}

@@ -1,0 +1,99 @@
+README
+Project 2
+Author: Sihua Zhou (sz583), Yihang Sun (ys815)
+----------------------------------------------
+
+Makefile
+----------------------------------------------
+Makefile
+For command are down below:
+
+For correctness testing:
+make
+- this command itself would compile the need file and testing files.
+
+make clean
+- cleans up all unnecessary files
+
+-----Please use "make" before running any test run for both modes-----
+
+./mysh for interacting mode
+./mysh myscript.sh for batch testing mode
+----------------------------------------------
+
+Test Plan and Executing (with results)
+-----------------------------------------------
+Test Plans
+1. Entering diffrent mode
+    ./mysh
+        Welcome to my shell!
+        mysh> 
+
+    ./mysh myscript.sh
+        sz583@grep:~/CS214/project/project2$ ./mysh myscript.sh
+        baz: Bad Command! Setting std_out Twice!
+        bar: Bad Command! Setting std_in Twice!
+        foo
+        ec*o: Bad Command! No matching files!
+        ./revline: No such file or directory
+        cd: Not a directory
+        cd: No such file or directory
+        /common/home/sz583/CS214/project/project2
+        mysh: exiting
+        cd: Not a directory
+        cd: No such file or directory
+        /common/home/sz583/CS214/project/project2
+        mysh: exiting
+
+    result: launched successfully.
+
+2. Prompt Formats
+    By inputing command "./mysh" the prompt would pop up and would 
+    keep showing after the user entered the something in the command lines
+    (e.g., after result pop up the newline with prompt is offered).
+
+3. Command Name/ Wildcard/ Redirection/ Pipes
+    All features are implement and test with myscript.sh with these testcase
+    and all of the test result are corrected or desirable. The related file 
+    can be checked to prove this statement.
+
+    Command list:
+    echo foo bar > baz
+    echo foo > baz bar
+    echo > baz foo bar
+    sort < foo > bar
+    sort > bar < foo
+    echo foo > bar | cat
+    echo foo > bar > baz 
+    cat < foo < bar 
+    echo foo | cat < bar 
+    ec*o foo
+    pwd > some_file
+    pwd | ./revline
+    touch foo | cd some_dir     p.s. non conflicted but did both
+    cd some_dir | pwd           p.s. conflicted but did both
+    touch foo | exit            p.s. priorizing function that is not exit
+
+    Results:
+    sz583@grep:~/CS214/project/project2$ ./mysh myscript.sh
+    baz: Bad Command! Setting std_out Twice!
+    bar: Bad Command! Setting std_in Twice!
+    foo
+    ec*o: Bad Command! No matching files!
+    ./revline: No such file or directory
+    cd: Not a directory
+    cd: No such file or directory
+    /common/home/sz583/CS214/project/project2
+    mysh: exiting
+    cd: Not a directory
+    cd: No such file or directory
+    /common/home/sz583/CS214/project/project2
+    mysh: exiting
+
+3.Extension
+Implemented
+    - Home directory
+        cd
+    - Directory wildcards
+        ../*/*.c
+
